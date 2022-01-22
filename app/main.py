@@ -12,7 +12,8 @@ app = FastAPI()
 while True:
     try:
         print('Connecting to database...')
-        conn = psycopg2.connect(host='localhost', database="fastapi", user="postgres", password="admin", cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(host='localhost', database="fastapi",
+                                user="postgres", password="admin", cursor_factory=RealDictCursor)
         cursor = conn.cursor()
         print('Connected to database successfully...')
         break
@@ -32,7 +33,7 @@ class PostSchema(BaseModel):
     id: Optional[int]
     title: str
     content: str
-    is_publish: bool = True
+    is_published: bool = True
     rating: Optional[int] = None
 
 
@@ -47,14 +48,14 @@ my_posts: List[PostSchema] = [
         "id": 1,
         "title": "Post 1 Title",
         "content": "Post 1 Content",
-        "is_publish": True,
+        "is_published": True,
         "rating": 5
     },
     {
         "id": 2,
         "title": "Post 2 Title",
         "content": "Post 2 Content",
-        "is_publish": True,
+        "is_published": True,
         "rating": 4.3
     }
 ]
@@ -79,9 +80,11 @@ def root():
 
 @app.get('/posts', status_code=status.HTTP_200_OK)
 def get_posts():
+    cursor.execute(""" SELECT * from posts ORDER BY id""")
+    posts = cursor.fetchall()
     response = ResponseSchema(
         message="Posts fetched successfully",
-        data=my_posts
+        data=posts
     )
     return response
 
@@ -106,11 +109,17 @@ def get_posts_by_id(id: int):
 
 @app.post('/post', status_code=status.HTTP_201_CREATED)
 def create_post(payload: PostSchema):
-    payload.id = randrange(1, 1000000)
-    my_posts.append(payload.dict())
+
+    cursor.execute(
+        """ INSERT INTO posts (title, content, is_published) VALUES (%s, %s, %s) RETURNING * """,
+        (payload.title, payload.content, payload.is_published)
+    )
+
+    new_post = cursor.fetchone()
+    conn.commit()
     response = ResponseSchema(
         message="Post created successfully",
-        data=payload
+        data=new_post
     )
     return response
 
