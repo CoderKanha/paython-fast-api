@@ -23,12 +23,6 @@ while True:
         time.sleep(5)
 
 
-# cursor.execute("SELECT * FROM posts")
-# records = cursor.fetchall()
-
-# print('Records: ', records)
-
-
 class PostSchema(BaseModel):
     id: Optional[int]
     title: str
@@ -80,7 +74,7 @@ def root():
 
 @app.get('/posts', status_code=status.HTTP_200_OK)
 def get_posts():
-    cursor.execute(""" SELECT * from posts ORDER BY id""")
+    cursor.execute(""" SELECT * from posts WHERE NOT is_deleted ORDER BY id""")
     posts = cursor.fetchall()
     response = ResponseSchema(
         message="Posts fetched successfully",
@@ -91,7 +85,9 @@ def get_posts():
 
 @app.get('/post/{id}', status_code=status.HTTP_200_OK)
 def get_posts_by_id(id: int):
-    post = find_post(id)
+    cursor.execute(""" SELECT * FROM posts WHERE NOT is_deleted AND id = %s """, (str(id), ))
+    post = cursor.fetchone()
+
     if not post:
         response = ResponseSchema(
             message="Requested post not found",
@@ -126,9 +122,14 @@ def create_post(payload: PostSchema):
 
 @app.put('/post/{id}', status_code=status.HTTP_200_OK)
 def update_post(id: int, payload: PostSchema):
-    post_index = find_index(id)
-    print(post_index)
-    if post_index == None:
+
+    cursor.execute(
+        """ UPDATE posts SET title = %s, content = %s, is_published = %s WHERE NOT is_deleted AND id = %s RETURNING *""",
+        (payload.title, payload.content, payload.is_published, id)
+    )
+    updated_post = cursor.fetchone()
+    conn.commit()
+    if updated_post == None:
         response = ResponseSchema(
             message="Requested post not found",
             data=None
@@ -136,19 +137,20 @@ def update_post(id: int, payload: PostSchema):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
-    my_posts[post_index] = payload.dict()
     response = ResponseSchema(
         message="Post updated successfully",
-        data=payload
+        data=updated_post
     )
     return response
 
 
 @app.delete('/post/{id}', status_code=status.HTTP_200_OK)
 def delete_post(id: int):
-    post_index = find_index(id)
-    print(post_index)
-    if post_index == None:
+
+    cursor.execute(""" UPDATE posts SET is_deleted = true WHERE NOT is_deleted AND id = %s RETURNING *""", (str(id), ))
+    deleted_post = cursor.fetchone()
+    conn.commit()
+    if deleted_post == None:
         response = ResponseSchema(
             message="Requested post not found",
             data=None
@@ -156,9 +158,9 @@ def delete_post(id: int):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
-    my_posts.pop(post_index)
+
     response = ResponseSchema(
         message="Post deleted successfully",
-        data=None
+        data=deleted_post
     )
     return response

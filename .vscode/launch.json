@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/app",
+            "python": "${cwd}/venv/Scripts/python",
+            "args": [
+                "main:app",
+                "--reload",
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
