@@ -1,10 +1,18 @@
+import datetime
 from random import randrange
 import time
 from typing import List, Optional
-from fastapi import FastAPI, status, HTTPException
+from fastapi import Depends, FastAPI, status, HTTPException
 from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from sqlalchemy import null
+import models
+from models import Posts
+from database import engine, get_db
+from sqlalchemy.orm import Session
+
+models.Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI()
@@ -28,7 +36,9 @@ class PostSchema(BaseModel):
     title: str
     content: str
     is_published: bool = True
-    rating: Optional[int] = None
+    is_deleted: bool = False
+    created_at: Optional[datetime.datetime]
+    updated_at: Optional[datetime.datetime]
 
 
 class ResponseSchema(BaseModel):
@@ -55,27 +65,16 @@ my_posts: List[PostSchema] = [
 ]
 
 
-def find_post(id: int):
-    for post in my_posts:
-        if post["id"] == id:
-            return post
-
-
-def find_index(id: int):
-    for index, post in enumerate(my_posts):
-        if post["id"] == id:
-            return index
-
-
 @app.get('/')
 def root():
     return {"message": "Hello World"}
 
 
 @app.get('/posts', status_code=status.HTTP_200_OK)
-def get_posts():
-    cursor.execute(""" SELECT * from posts WHERE NOT is_deleted ORDER BY id""")
-    posts = cursor.fetchall()
+def get_posts(db: Session = Depends(get_db)):
+    # cursor.execute(""" SELECT * from posts WHERE NOT is_deleted ORDER BY id""")
+    # posts = cursor.fetchall()
+    posts = db.query(models.Posts).all()
     response = ResponseSchema(
         message="Posts fetched successfully",
         data=posts
@@ -84,9 +83,10 @@ def get_posts():
 
 
 @app.get('/post/{id}', status_code=status.HTTP_200_OK)
-def get_posts_by_id(id: int):
-    cursor.execute(""" SELECT * FROM posts WHERE NOT is_deleted AND id = %s """, (str(id), ))
-    post = cursor.fetchone()
+def get_posts_by_id(id: int, db: Session = Depends(get_db)):
+    # cursor.execute(""" SELECT * FROM posts WHERE NOT is_deleted AND id = %s """, (str(id), ))
+    # post = cursor.fetchone()
+    post = db.query(models.Posts).filter(models.Posts.id == id, models.Posts.is_deleted == False).first()
 
     if not post:
         response = ResponseSchema(
@@ -104,15 +104,19 @@ def get_posts_by_id(id: int):
 
 
 @app.post('/post', status_code=status.HTTP_201_CREATED)
-def create_post(payload: PostSchema):
+def create_post(payload: PostSchema, db: Session = Depends(get_db)):
+    # cursor.execute(
+    #     """ INSERT INTO posts (title, content, is_published) VALUES (%s, %s, %s) RETURNING * """,
+    #     (payload.title, payload.content, payload.is_published)
+    # )
+    # new_post = cursor.fetchone()
+    # conn.commit()
+    new_post = models.Posts(**payload.dict())
+    db.add(new_post)
+    db.commit()
+    # To return the newly created post
+    db.refresh(new_post)
 
-    cursor.execute(
-        """ INSERT INTO posts (title, content, is_published) VALUES (%s, %s, %s) RETURNING * """,
-        (payload.title, payload.content, payload.is_published)
-    )
-
-    new_post = cursor.fetchone()
-    conn.commit()
     response = ResponseSchema(
         message="Post created successfully",
         data=new_post
@@ -121,15 +125,20 @@ def create_post(payload: PostSchema):
 
 
 @app.put('/post/{id}', status_code=status.HTTP_200_OK)
-def update_post(id: int, payload: PostSchema):
+def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db)):
 
-    cursor.execute(
-        """ UPDATE posts SET title = %s, content = %s, is_published = %s WHERE NOT is_deleted AND id = %s RETURNING *""",
-        (payload.title, payload.content, payload.is_published, id)
-    )
-    updated_post = cursor.fetchone()
-    conn.commit()
-    if updated_post == None:
+    # cursor.execute(
+    #     """ UPDATE posts SET title = %s, content = %s, is_published = %s WHERE NOT is_deleted AND id = %s RETURNING *""",
+    #     (payload.title, payload.content, payload.is_published, id)
+    # )
+    # updated_post = cursor.fetchone()
+    # conn.commit()
+    payload.id = id
+
+    update_query = db.query(models.Posts).filter(models.Posts.id == id, models.Posts.is_deleted == False)
+    post = update_query.first()
+
+    if post == None:
         response = ResponseSchema(
             message="Requested post not found",
             data=None
@@ -137,20 +146,30 @@ def update_post(id: int, payload: PostSchema):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
-    response = ResponseSchema(
-        message="Post updated successfully",
-        data=updated_post
-    )
-    return response
+    
+    try:
+        update_query.update(payload.dict(), synchronize_session=False)
+        db.commit()
+        response = ResponseSchema(
+            message="Post updated successfully",
+            data=update_query.first()
+        )
+        return response
+    except Exception as error:
+        response = ResponseSchema(
+            message="Something went wrong"
+        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=response.dict())
 
 
 @app.delete('/post/{id}', status_code=status.HTTP_200_OK)
-def delete_post(id: int):
+def delete_post(id: int, db: Session = Depends(get_db)):
 
-    cursor.execute(""" UPDATE posts SET is_deleted = true WHERE NOT is_deleted AND id = %s RETURNING *""", (str(id), ))
-    deleted_post = cursor.fetchone()
-    conn.commit()
-    if deleted_post == None:
+    # cursor.execute(""" UPDATE posts SET is_deleted = true WHERE NOT is_deleted AND id = %s RETURNING *""", (str(id), ))
+    # deleted_post = cursor.fetchone()
+    # conn.commit()
+    deleted_post = db.query(models.Posts).filter(models.Posts.id == id, models.Posts.is_deleted == False)
+    if deleted_post.first() == None:
         response = ResponseSchema(
             message="Requested post not found",
             data=None
@@ -158,9 +177,11 @@ def delete_post(id: int):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
+    deleted_post.update({models.Posts.is_deleted: True} ,synchronize_session=False)
+    db.commit()
 
     response = ResponseSchema(
         message="Post deleted successfully",
-        data=deleted_post
+        data=null
     )
     return response
