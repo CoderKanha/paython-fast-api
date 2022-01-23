@@ -1,13 +1,11 @@
-from fastapi import Depends, FastAPI, status, HTTPException
+from fastapi import FastAPI
 from psycopg2.extras import RealDictCursor
-from database import engine, get_db
-from sqlalchemy.orm import Session
+from database import engine, Base
 from routers import users, posts
 import time
 import psycopg2
-import models
 
-models.Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 

@@ -2,8 +2,8 @@ from fastapi import APIRouter
 from fastapi import Depends, status, HTTPException
 from database import get_db
 from sqlalchemy.orm import Session
+from models import Posts
 import schemas
-import models
 
 
 router = APIRouter(
@@ -13,10 +13,10 @@ router = APIRouter(
 @router.get('/', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(
-        models.Posts
+        Posts
     ).filter(
-        models.Posts.is_published == True,
-        models.Posts.is_deleted == False
+        Posts.is_published == True,
+        Posts.is_deleted == False
     ).all()
     response = schemas.PostResponse(
         message="Posts fetched successfully",
@@ -28,11 +28,11 @@ def get_posts(db: Session = Depends(get_db)):
 @router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
 def get_posts_by_id(id: int, db: Session = Depends(get_db)):
     post = db.query(
-        models.Posts
+        Posts
     ).filter(
-        models.Posts.id == id,
-        models.Posts.is_published == True,
-        models.Posts.is_deleted == False
+        Posts.id == id,
+        Posts.is_published == True,
+        Posts.is_deleted == False
     ).first()
 
     if not post:
@@ -52,7 +52,7 @@ def get_posts_by_id(id: int, db: Session = Depends(get_db)):
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponse)
 def create_post(payload: schemas.Posts, db: Session = Depends(get_db)):
-    new_post = models.Posts(**payload.dict())
+    new_post = Posts(**payload.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -68,11 +68,11 @@ def create_post(payload: schemas.Posts, db: Session = Depends(get_db)):
 def update_post(id: int, payload: schemas.Posts, db: Session = Depends(get_db)):
     payload.id = id
     update_query = db.query(
-        models.Posts
+        Posts
     ).filter(
-        models.Posts.id == id,
-        models.Posts.is_published == True,
-        models.Posts.is_deleted == False
+        Posts.id == id,
+        Posts.is_published == True,
+        Posts.is_deleted == False
     )
     post = update_query.first()
 
@@ -106,11 +106,11 @@ def update_post(id: int, payload: schemas.Posts, db: Session = Depends(get_db)):
 @router.delete('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
 def delete_post(id: int, db: Session = Depends(get_db)):
     deleted_post = db.query(
-        models.Posts
+        Posts
     ).filter(
-        models.Posts.id == id,
-        models.Posts.is_published == True,
-        models.Posts.is_deleted == False
+        Posts.id == id,
+        Posts.is_published == True,
+        Posts.is_deleted == False
     )
     if deleted_post.first() == None:
         response = schemas.PostError(
@@ -120,7 +120,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
-    deleted_post.update({models.Posts.is_deleted: True},
+    deleted_post.update({Posts.is_deleted: True},
                         synchronize_session=False)
     db.commit()
 
