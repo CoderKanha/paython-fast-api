@@ -1,16 +1,16 @@
 from fastapi import APIRouter
 from fastapi import Depends, status, HTTPException
+from schema import PostResponseSchema, PostErrorSchema, PostSchema
 from database import get_db
 from sqlalchemy.orm import Session
 from models import Posts
-import schemas
 
 
 router = APIRouter(
     prefix="/post"
 )
 
-@router.get('/', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
+@router.get('/', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(
         Posts
@@ -18,14 +18,14 @@ def get_posts(db: Session = Depends(get_db)):
         Posts.is_published == True,
         Posts.is_deleted == False
     ).all()
-    response = schemas.PostResponse(
+    response = PostResponseSchema(
         message="Posts fetched successfully",
         data=posts
     )
     return response
 
 
-@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
+@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
 def get_posts_by_id(id: int, db: Session = Depends(get_db)):
     post = db.query(
         Posts
@@ -36,36 +36,36 @@ def get_posts_by_id(id: int, db: Session = Depends(get_db)):
     ).first()
 
     if not post:
-        response = schemas.PostError(
+        response = PostErrorSchema(
             message="Requested post not found",
             error=post
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
-    response = schemas.PostResponse(
+    response = PostResponseSchema(
         message="Post fetched successfully",
         data=post
     )
     return response
 
 
-@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponse)
-def create_post(payload: schemas.Posts, db: Session = Depends(get_db)):
+@router.post('/', status_code=status.HTTP_201_CREATED, response_model=PostResponseSchema)
+def create_post(payload: PostSchema, db: Session = Depends(get_db)):
     new_post = Posts(**payload.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
 
-    response = schemas.PostResponse(
+    response = PostResponseSchema(
         message="Post created successfully",
         data=new_post
     )
     return response
 
 
-@router.put('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
-def update_post(id: int, payload: schemas.Posts, db: Session = Depends(get_db)):
+@router.put('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
+def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db)):
     payload.id = id
     update_query = db.query(
         Posts
@@ -77,7 +77,7 @@ def update_post(id: int, payload: schemas.Posts, db: Session = Depends(get_db)):
     post = update_query.first()
 
     if post == None:
-        response = schemas.PostError(
+        response = PostErrorSchema(
             message="Requested post not found",
             error=None
         )
@@ -88,14 +88,14 @@ def update_post(id: int, payload: schemas.Posts, db: Session = Depends(get_db)):
     try:
         update_query.update(payload.dict(), synchronize_session=False)
         db.commit()
-        response = schemas.PostResponse(
+        response = PostResponseSchema(
             message="Post updated successfully",
-            data=post
+            data=update_query.first()
         )
         return response
     except Exception as error:
         print(error)
-        response = schemas.PostError(
+        response = PostErrorSchema(
             message="Something went wrong",
             error=None
         )
@@ -103,7 +103,7 @@ def update_post(id: int, payload: schemas.Posts, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=response.dict())
 
 
-@router.delete('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.PostResponse)
+@router.delete('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
 def delete_post(id: int, db: Session = Depends(get_db)):
     deleted_post = db.query(
         Posts
@@ -113,7 +113,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
         Posts.is_deleted == False
     )
     if deleted_post.first() == None:
-        response = schemas.PostError(
+        response = PostErrorSchema(
             message="Requested post not found",
             error=None
         )
@@ -124,7 +124,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
                         synchronize_session=False)
     db.commit()
 
-    response = schemas.PostResponse(
+    response = PostResponseSchema(
         message="Post deleted successfully",
         data=None
     )
