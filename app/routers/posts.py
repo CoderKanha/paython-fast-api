@@ -1,9 +1,12 @@
+from typing import List
+
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from models import Posts
 from oauth2 import get_current_user
-from schema import PostErrorSchema, PostResponseSchema, PostSchema
+from schema import (PostErrorSchema, PostResponseSchema, PostSchema,
+                    UserBaseSchema)
 from sqlalchemy.orm import Session
 
 router = APIRouter(
@@ -11,23 +14,25 @@ router = APIRouter(
 )
 
 @router.get('/', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
-def get_posts(db: Session = Depends(get_db), get_current_user: int = Depends(get_current_user)):
-    posts = db.query(
+def get_posts(db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
+    posts_query = db.query(
         Posts
     ).filter(
         Posts.is_published == True,
         Posts.is_deleted == False
     ).all()
-    print(jsonable_encoder(get_current_user))
+    posts_list: List[PostSchema] = []
+    for post in jsonable_encoder(posts_query):
+        posts_list.append(PostSchema(**post))
     response = PostResponseSchema(
         message="Posts fetched successfully",
-        data=posts
+        data=posts_list
     )
     return response
 
 
 @router.get('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
-def get_posts_by_id(id: int, db: Session = Depends(get_db), get_current_user: int = Depends(get_current_user)):
+def get_posts_by_id(id: int, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
     post = db.query(
         Posts
     ).filter(
@@ -52,7 +57,7 @@ def get_posts_by_id(id: int, db: Session = Depends(get_db), get_current_user: in
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=PostResponseSchema)
-def create_post(payload: PostSchema, db: Session = Depends(get_db), get_current_user: int = Depends(get_current_user)):
+def create_post(payload: PostSchema, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
     new_post = Posts(**payload.dict())
     db.add(new_post)
     db.commit()
@@ -66,7 +71,7 @@ def create_post(payload: PostSchema, db: Session = Depends(get_db), get_current_
 
 
 @router.put('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
-def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db), get_current_user: int = Depends(get_current_user)):
+def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
     payload.id = id
     update_query = db.query(
         Posts
@@ -100,7 +105,7 @@ def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db), get
 
 
 @router.delete('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
-def delete_post(id: int, db: Session = Depends(get_db), get_current_user: int = Depends(get_current_user)):
+def delete_post(id: int, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
     deleted_post = db.query(
         Posts
     ).filter(
