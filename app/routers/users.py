@@ -8,7 +8,7 @@ from fastapi.encoders import jsonable_encoder
 from utils import get_password_hash
 
 router = APIRouter(
-    prefix="/user"
+    tags=['Users']
 )
 
 
