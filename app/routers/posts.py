@@ -58,6 +58,7 @@ def get_posts_by_id(id: int, db: Session = Depends(get_db), get_current_user: Us
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=PostResponseSchema)
 def create_post(payload: PostSchema, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
+    payload.owner_id = get_current_user.id
     new_post = Posts(**payload.dict())
     db.add(new_post)
     db.commit()
@@ -73,6 +74,7 @@ def create_post(payload: PostSchema, db: Session = Depends(get_db), get_current_
 @router.put('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
 def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
     payload.id = id
+    payload.owner_id = get_current_user.id
     update_query = db.query(
         Posts
     ).filter(
@@ -89,6 +91,14 @@ def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db), get
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
+        )
+    if post.owner_id != get_current_user.id:
+        response = PostErrorSchema(
+            message="Not authorized to perform this action",
+            error=None
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=response.dict()
         )
 
     try:
@@ -120,6 +130,14 @@ def delete_post(id: int, db: Session = Depends(get_db), get_current_user: UserBa
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
+        )
+    if deleted_post.first().owner_id != get_current_user.id:
+        response = PostErrorSchema(
+            message="Not authorized to perform this action",
+            error=None
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=response.dict()
         )
     deleted_post.update({Posts.is_deleted: True},
                         synchronize_session=False)

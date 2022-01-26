@@ -14,6 +14,7 @@ class PostSchema(PostBaseSchema):
     id: Optional[int]
     created_at: Optional[datetime] = datetime.now().astimezone()
     updated_at: Optional[datetime] = datetime.now().astimezone()
+    owner_id: Optional[int]
 
     class Config():
         orm_mode = True
