@@ -4,6 +4,7 @@ from schema import PostResponseSchema, PostErrorSchema, PostSchema
 from database import get_db
 from sqlalchemy.orm import Session
 from models import Posts
+from fastapi.encoders import jsonable_encoder
 
 
 router = APIRouter(
@@ -94,13 +95,8 @@ def update_post(id: int, payload: PostSchema, db: Session = Depends(get_db)):
         )
         return response
     except Exception as error:
-        print(error)
-        response = PostErrorSchema(
-            message="Something went wrong",
-            error=None
-        )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=response.dict())
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=jsonable_encoder(error))
 
 
 @router.delete('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
