@@ -1,20 +1,32 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
+from schema import UserBaseSchema
 
 from schema import ErrorBaseSchema, ResponseBaseSchema
 
 
 class PostBaseSchema(BaseModel):
-    title: str
-    content: str
+    title: str = ''
+    content: str = ''
     is_published: bool = True
 
 class PostSchema(PostBaseSchema):
     id: Optional[int]
+    created_at: datetime = datetime.now().astimezone()
+    updated_at: datetime = datetime.now().astimezone()
+    owner_id: Optional[int]
+    owner: Optional[UserBaseSchema]
+
+    class Config():
+        orm_mode = True
+
+class PostOutputSchema(PostBaseSchema):
+    id: Optional[int]
     created_at: Optional[datetime] = datetime.now().astimezone()
     updated_at: Optional[datetime] = datetime.now().astimezone()
     owner_id: Optional[int]
+    owner: UserBaseSchema
 
     class Config():
         orm_mode = True
