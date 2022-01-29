@@ -16,13 +16,26 @@ router = APIRouter(
 
 
 @router.get('/', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
-def get_posts(db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
+def get_posts(
+    db: Session = Depends(get_db),
+    get_current_user: UserBaseSchema = Depends(get_current_user),
+    limit: int = 10,
+    page: int = 1,
+    title: str = '',
+    content: str = ''
+):
+    print(title)
     posts_query = db.query(
         Posts
     ).filter(
         Posts.is_published == True,
-        Posts.is_deleted == False
-    ).all()
+        Posts.is_deleted == False,
+        # Using Like method
+        # Posts.title.like("%{}%".format(title)),
+        # Posts.content.like("%{}%".format(content)),
+        Posts.title.contains(title),
+        Posts.content.contains(content),
+    ).limit(limit).offset(limit*(page-1)).all()
     posts_list: List[PostSchema] = []
     for post in jsonable_encoder(posts_query):
         post['owner_id'] = get_current_user.id
