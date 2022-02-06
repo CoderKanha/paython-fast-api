@@ -1,5 +1,7 @@
 from sqlalchemy import Boolean, Column, Integer, String, TIMESTAMP, text
-from database import Base
+from app.database import Base
+
+
 class UserModel(Base):
     __tablename__ = 'users'
     id = Column('id', Integer, nullable=False, primary_key=True)

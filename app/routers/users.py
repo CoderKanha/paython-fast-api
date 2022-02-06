@@ -1,11 +1,11 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from models import UserModel
-from schema import UserPasswordSchema, UserBaseSchema, UserResponseSchema
-from database import get_db
+from app.models import UserModel
+from app.schema import UserPasswordSchema, UserBaseSchema, UserResponseSchema
+from app.database import get_db
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
-from utils import get_password_hash
+from app.utils import get_password_hash
 
 router = APIRouter(
     tags=['Users']

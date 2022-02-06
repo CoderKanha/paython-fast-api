@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Generic, Optional, TypeVar
+from typing import Optional, TypeVar
 from pydantic import BaseModel, EmailStr
 
-from schema import ResponseBaseSchema
+from app.schema import ResponseBaseSchema
 
 T = TypeVar('T')
 class UserBaseSchema(BaseModel):

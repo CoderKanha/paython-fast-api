@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from database import engine, Base
-from routers import users, posts, oauth, votes
+from .database import engine, Base
+from .routers import users, posts, oauth, votes
 
 Base.metadata.create_all(bind=engine)
 

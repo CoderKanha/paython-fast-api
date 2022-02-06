@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
-from schema import UserBaseSchema
+from app.schema import UserBaseSchema
 
-from schema import ErrorBaseSchema, ResponseBaseSchema
+from app.schema import ErrorBaseSchema, ResponseBaseSchema
 
 
 class PostBaseSchema(BaseModel):

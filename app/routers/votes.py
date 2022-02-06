@@ -1,8 +1,8 @@
-from database import get_db
+from app.database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
-from models import VotesModel, Posts
-from oauth2 import get_current_user
-from schema import UserBaseSchema, VoteBaseSchema
+from app.models import VotesModel, Posts
+from app.oauth2 import get_current_user
+from app.schema import UserBaseSchema, VoteBaseSchema
 from sqlalchemy.orm import Session
 
 router = APIRouter(

@@ -3,12 +3,12 @@ from typing import List
 
 from sqlalchemy import func
 
-from database import get_db
+from app.database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from models import Posts, VotesModel
-from oauth2 import get_current_user
-from schema import (PostBaseSchema, PostErrorSchema, PostResponseSchema, PostVoteSchema,
+from app.models import Posts, VotesModel
+from app.oauth2 import get_current_user
+from app.schema import (PostBaseSchema, PostErrorSchema, PostResponseSchema, PostVoteSchema,
                     PostVoteResponseSchema, PostSchema, UserBaseSchema, PostOutputSchema)
 from sqlalchemy.orm import Session
 

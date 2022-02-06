@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     expiration_time_minutes: int
 
     class Config:
-        env_file = '../.env'
+        env_file = '.env'
 
 
 settings = Settings()
