@@ -12,4 +12,4 @@ class Posts(Base):
     created_at = Column('created_at', TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     updated_at = Column('updated_at', TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     owner_id = Column('owner_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    owner = relationship('UserModel', lazy='joined')
+    owner = relationship('UserModel')

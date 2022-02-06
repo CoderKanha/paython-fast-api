@@ -1,13 +1,15 @@
 from datetime import datetime
 from typing import List
 
+from sqlalchemy import func
+
 from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from models import Posts
+from models import Posts, VotesModel
 from oauth2 import get_current_user
-from schema import (PostBaseSchema, PostErrorSchema, PostResponseSchema,
-                    PostSchema, UserBaseSchema)
+from schema import (PostBaseSchema, PostErrorSchema, PostResponseSchema, PostVoteSchema,
+                    PostVoteResponseSchema, PostSchema, UserBaseSchema, PostOutputSchema)
 from sqlalchemy.orm import Session
 
 router = APIRouter(
@@ -15,7 +17,7 @@ router = APIRouter(
 )
 
 
-@router.get('/', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
+@router.get('/', status_code=status.HTTP_200_OK, response_model=PostVoteResponseSchema)
 def get_posts(
     db: Session = Depends(get_db),
     get_current_user: UserBaseSchema = Depends(get_current_user),
@@ -24,40 +26,47 @@ def get_posts(
     title: str = '',
     content: str = ''
 ):
-    print(title)
     posts_query = db.query(
-        Posts
+        Posts,
+        func.count(VotesModel.post_id).label('votes')
+    ).join(
+        VotesModel,
+        VotesModel.post_id == Posts.id,
+        isouter=True
+    ).group_by(
+        Posts.id
     ).filter(
         Posts.is_published == True,
         Posts.is_deleted == False,
-        # Using Like method
-        # Posts.title.like("%{}%".format(title)),
-        # Posts.content.like("%{}%".format(content)),
         Posts.title.contains(title),
         Posts.content.contains(content),
     ).limit(limit).offset(limit*(page-1)).all()
-    posts_list: List[PostSchema] = []
-    for post in jsonable_encoder(posts_query):
-        post['owner_id'] = get_current_user.id
-        posts_list.append(PostSchema(**post))
+
+    posts_list: List[PostVoteSchema] = []
+    for post in posts_query:
+        posts_list.append(PostVoteSchema(**post))
     response = PostResponseSchema(
         message="Posts fetched successfully",
         data=posts_list
     )
-    return jsonable_encoder(response)
+    return response
 
 
-@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=PostResponseSchema)
+@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=PostVoteResponseSchema)
 def get_posts_by_id(id: int, db: Session = Depends(get_db), get_current_user: UserBaseSchema = Depends(get_current_user)):
     post = db.query(
-        Posts
+        Posts,
+        func.count(VotesModel.post_id).label('votes')
     ).filter(
         Posts.id == id,
         Posts.is_published == True,
         Posts.is_deleted == False
-    ).first()
+    ).join(
+        VotesModel,
+        VotesModel.post_id == Posts.id,
+        isouter=True
+    ).group_by(Posts.id).first()
 
-    post_data = jsonable_encoder(post)
     if not post:
         response = PostErrorSchema(
             message="Requested post not found",
@@ -66,9 +75,10 @@ def get_posts_by_id(id: int, db: Session = Depends(get_db), get_current_user: Us
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=response.dict()
         )
-    response = PostResponseSchema(
+
+    response = PostVoteResponseSchema(
         message="Post fetched successfully",
-        data=PostSchema(**post_data)
+        data=PostVoteSchema(**post)
     )
     return response
 

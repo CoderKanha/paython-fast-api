@@ -31,6 +31,16 @@ class PostOutputSchema(PostBaseSchema):
     class Config():
         orm_mode = True
 
+class PostVoteSchema(BaseModel):
+    Posts: PostSchema
+    votes: int
+
+    class Config():
+        orm_mode = True
+
+class PostVoteResponseSchema(ResponseBaseSchema[PostVoteSchema]):
+    pass
+
 class PostResponseSchema(ResponseBaseSchema[PostSchema]):
     pass
 
