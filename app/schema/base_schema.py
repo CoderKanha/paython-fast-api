@@ -11,7 +11,7 @@ class BaseSchema(BaseModel):
         orm_mode = True
 
 class ResponseBaseSchema(BaseSchema, Generic[T]):
-    data: List[T] | T | None
+    data: Optional[List[T] | T | None]
 
 class ErrorBaseSchema(BaseSchema, Generic[T]):
     error: Optional[object | T | None]
